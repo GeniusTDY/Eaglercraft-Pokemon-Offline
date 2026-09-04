@@ -1,0 +1,58 @@
+name: PokeServer
+version: 1.0.0
+main: cn.pokeserver.PokePlugin
+api-version: 1.12
+author: PokeServer
+description: 服务端宝可梦玩法（简化版）- 兼容 Eaglercraft 网页客户端 / 纯服务端插件
+website: https://github.com/
+
+commands:
+  poke:
+    description: 宝可梦帮助菜单
+    usage: /poke
+  pokespawn:
+    description: 在面前刷新一只野生宝可梦（管理员调试）
+    usage: /pokespawn
+    permission: pokeserver.admin
+  pokeball:
+    description: 获得精灵球
+    usage: /pokeball [数量]
+    permission: pokeserver.admin
+  party:
+    description: 查看我的队伍
+    usage: /party
+  box:
+    description: 查看宝可梦存储箱
+    usage: /box
+  deposit:
+    description: 将队伍宝可梦存入箱子
+    usage: /deposit <序号>
+  withdraw:
+    description: 从箱子取出宝可梦
+    usage: /withdraw <序号>
+  summon:
+    description: 召唤宝可梦跟随出战
+    usage: /summon <序号>
+  dismiss:
+    description: 收回召唤的宝可梦
+    usage: /dismiss
+  pokeinfo:
+    description: 查看宝可梦详情
+    usage: /pokeinfo <序号>
+  release:
+    description: 放生宝可梦
+    usage: /release <序号>
+  battle:
+    description: 向其他玩家发起宝可梦对战
+    usage: /battle <玩家名>
+  attack:
+    description: 对战中发动攻击
+    usage: /attack
+  heal:
+    description: 对战中治疗一次
+    usage: /heal
+
+permissions:
+  pokeserver.admin:
+    description: 宝可梦管理员（可领取精灵球、调试刷新）
+    default: op

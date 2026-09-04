@@ -1,0 +1,358 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+messages:
+
+
+    locale: en
+
+
+
+
+    consoleLocale: en
+
+    disablePrefix: false
+
+
+    perIssuerLocale: true
+
+
+    dateFormat: dd MMMM yyyy
+
+
+
+
+
+
+
+
+
+database:
+    enabled: false
+    host: localhost
+    port: 3306
+    database: db
+    username: root
+    password: pass
+    maxPoolSize: 10
+    tablePrefix: sr_
+    connectionOptions: sslMode=trust&serverTimezone=UTC
+
+
+
+
+
+
+
+commands:
+
+
+
+
+
+    forceDefaultPermissions: true
+
+
+
+    skinChangeCooldown: 30
+
+
+
+    skullGetCooldown: 30
+    skinErrorCooldown: 5
+    skullErrorCooldown: 5
+
+
+    restrictSkinUrls:
+        enabled: false
+        list: 
+        - https://i.imgur.com
+        - http://i.imgur.com
+        - https://storage.googleapis.com
+        - http://storage.googleapis.com
+        - https://cdn.discordapp.com
+        - http://cdn.discordapp.com
+        - https://textures.minecraft.net
+        - http://textures.minecraft.net
+
+
+    disabledSkins:
+        enabled: false
+        list: 
+        - steve
+        - owner
+
+
+
+
+
+    perSkinPermissionsConsent: ''
+
+
+
+
+
+    perSkinPermissions: false
+
+
+
+    maxHistoryLength: 36
+
+
+
+    maxFavouriteLength: 180
+    customHelp:
+
+
+
+        enabled: false
+
+        message: 
+        - <yellow>Skin plugin Help
+        - <gray>---------------------
+        - <gray>/skin set <skin> - <yellow>Set your skin
+
+
+
+
+    disableSkinCommand: false
+
+
+
+
+    disableSkullCommand: false
+
+
+
+
+    disableGUICommand: false
+
+
+gui:
+
+
+
+    notUnlockedSkin: c10591e6909e6a281b371836e462d67a2c78fa0952e910f32b41a26c48c1757c
+
+    custom:
+
+        enabled: true
+
+        index: 0
+
+        onlyShowList: false
+
+        list: 
+        - xknat
+        - pistonmaster
+
+    players:
+
+        enabled: false
+
+        index: 1
+
+        onlyShowList: false
+
+        list: 
+        - 7dcfc130-344a-4719-9fbe-3176bc2075c6
+        - b1ae0778-4817-436c-96a3-a72c67cda060
+
+    recommendations:
+
+        enabled: true
+
+        index: 2
+
+        onlyShowList: false
+
+        list: 
+        - vampire
+        - space-suit
+
+
+
+
+
+
+
+
+
+
+
+storage:
+    defaultSkins:
+        enabled: false
+        applyForPremium: false
+        list: 
+        - xknat
+        - pistonmaster
+
+
+    disallowAutoUpdateSkin: false
+
+
+
+    skinExpiresAfter: 15
+
+
+
+    uuidExpiresAfter: 60
+
+
+
+
+
+
+proxy:
+
+
+    notAllowedCommandServers:
+
+        enabled: true
+
+        ifNoServerBlockCommand: true
+
+        allowList: false
+
+        list: 
+        - auth
+
+
+
+
+
+
+server:
+
+
+    resourcePackFix: true
+
+
+    dismountPlayerOnSkinUpdate: true
+
+
+
+    remountPlayerOnSkinUpdate: true
+
+
+    dismountPassengersOnSkinUpdate: false
+    sound:
+
+        enabled: true
+
+
+
+        value: ENTITY_PLAYER_TELEPORT, 0.7
+login:
+
+
+    noSkinIfLoginCanceled: true
+
+    alwaysApplyPremium: false
+api:
+
+
+
+    mineskinAPIKey: key
+
+
+
+    mineskinSecretSkins: false
+
+
+
+
+
+    fetchRecommendedSkins: true
+
+
+
+
+
+
+advanced:
+
+
+
+    disableOnJoinSkins: false
+
+
+
+
+
+    enablePaperJoinListener: true
+
+
+
+
+    teleportRefresh: false
+
+
+
+
+
+    noConnections: false
+
+
+
+
+
+
+
+
+
+
+
+
+
+dev:
+
+    debug: false
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

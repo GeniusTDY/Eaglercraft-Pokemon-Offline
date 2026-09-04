@@ -1,0 +1,4 @@
+# 服务端运行时再生成产物（不入库）
+server/logs/
+server/crash-reports/
+*.log

@@ -1,0 +1,13 @@
+team:
+  '0':
+    species: CHICKEN
+    nickname: 咯咯鸡
+    level: 1
+    exp: 0
+    hp: 22
+  '1':
+    species: VILLAGER
+    nickname: 憨憨村民
+    level: 11
+    exp: 0
+    hp: 42

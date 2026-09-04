@@ -1,0 +1,7 @@
+team:
+  '0':
+    species: CHICKEN
+    nickname: 咯咯鸡
+    level: 3
+    exp: 6
+    hp: 26

@@ -1,0 +1,7 @@
+
+ice_servers_no_passwd:
+- ''
+ice_servers_passwd:
+- url: ''
+  username: ''
+  password: ''

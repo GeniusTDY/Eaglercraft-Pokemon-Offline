@@ -1,0 +1,9 @@
+# 宝可梦插件配置
+# 野生宝可梦刷新间隔（秒）
+wildSpawnInterval: 60
+# 野生宝可梦在玩家附近多少格内刷新
+wildSpawnRadius: 24
+# 野生宝可梦最高等级
+maxWildLevel: 30
+# 首次加入赠送的精灵球数量
+starterAmount: 5

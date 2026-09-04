@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eaglercraft 服务器</title>
+<style type="text/css">
+body {
+	margin: 16px;
+	font-family: sans-serif;
+}
+</style>
+</head>
+<script type="text/javascript">
+{% embed text `server_info_message_api_v1.js` %}
+</script>
+<script type="text/javascript">
+
+
+serverMessageAPI.openChannel("com.example.test_channel");
+
+
+serverMessageAPI.addEventListener("message", function(msg) {
+	var newElement = document.createElement("li");
+	if(msg.type === "binary") {
+		newElement.innerText = "[" + msg.channel + "][binary] ArrayBuffer(" + msg.data.byteLength + ")";
+	}else if(msg.type === "string") {
+		newElement.innerText = "[" + msg.channel + "][string] \"" + msg.data + "\"";
+	}
+	document.getElementById("messages_recieved").appendChild(newElement);
+});
+
+window.addEventListener("load", function() {
+	document.getElementById("message_send").addEventListener("click", function() {
+		var el = document.getElementById("message_contents");
+		var toSend = el.value.trim();
+		if(toSend.length > 0) {
+			
+			
+			serverMessageAPI.send("com.example.test_channel", toSend);
+			
+			el.value = "";
+		}
+	});
+});
+
+</script>
+<body>
+<h1>消息 API 测试</h1>
+<h4>服务器版本：{% global `plugin_name` %} {% global `plugin_version` %}</h4>
+<h4>请确保在“pause_menu.yml”中启用了 JavaScript</h4>
+<p>消息：<input type="text" id="message_contents" placeholder="eagler"> <button id="message_send">发送</button></p>
+<p>从服务器接收：</p>
+<ul id="messages_recieved"></ul>
+</body>
+</html>

@@ -1,0 +1,4 @@
+wildSpawnInterval: 60
+wildSpawnRadius: 24
+maxWildLevel: 30
+starterAmount: 5

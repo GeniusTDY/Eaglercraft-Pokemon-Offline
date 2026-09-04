@@ -1,0 +1,45 @@
+
+
+
+
+common:
+    header: '==========[ AuthMeReloaded HELP ]=========='
+    optional: 'Optional'
+    hasPermission: 'You have permission'
+    noPermission: 'No permission'
+    default: 'Default'
+    result: 'Result'
+    defaultPermissions:
+        notAllowed: 'No permission'
+        opOnly: 'OP''s only'
+        allowed: 'Everyone allowed'
+
+
+
+
+
+section:
+    command: 'Command'
+    description: 'Short description'
+    detailedDescription: 'Detailed description'
+    arguments: 'Arguments'
+    permissions: 'Permissions'
+    alternatives: 'Alternatives'
+    children: 'Commands'
+
+
+
+
+
+
+
+commands:
+    authme.register:
+        description: 'Register a player'
+        detailedDescription: 'Register the specified player with the specified password.'
+        arg1:
+            label: 'player'
+            description: 'Player name'
+        arg2:
+            label: 'password'
+            description: 'Password'

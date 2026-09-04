@@ -14,10 +14,9 @@
 │   ├── jre/           内置 JDK 17 运行库（无需外部安装 Java）
 │   ├── plugins/       插件（EaglerXServer / PokeServer / ViaVersion 等）
 │   ├── world/         已生成的世界
-│   ├── start.sh       启动脚本（2G 内存，自动用内置 JRE）
-│   ├── start_lowmem.sh 低内存启动（768M，自动用内置 JRE）
 │   ├── run.sh         Linux/macOS 一键启动（2G，G1GC，自动用内置 JRE）
-│   └── run.bat        Windows 一键启动（2G，G1GC，自动用内置 JRE）
+│   ├── run.bat        Windows 一键启动（2G，G1GC，自动用内置 JRE）
+│   └── start_lowmem.sh 低内存启动（768M，自动用内置 JRE）
 ├── web/               离线网页客户端（单文件，自包含）
 ├── poke-plugin/       宝可梦插件源码（Java）
 └── tools/ 脚本        clean_comments.py / offline_client_update.py / http_static.py
@@ -31,7 +30,8 @@ Linux / macOS：
 
 ```bash
 cd server
-./start_lowmem.sh        # 低内存模式（768M），机器内存充足可用 ./start.sh
+./run.sh                # 标准模式（2G，G1GC）
+./start_lowmem.sh       # 低内存模式（768M）
 ```
 
 Windows：双击 `server/run.bat`。

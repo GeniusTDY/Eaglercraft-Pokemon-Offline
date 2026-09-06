@@ -1,4 +1,3 @@
-# NOTE: /cache must be committed - it holds the vanilla jar cache (mojang_1.12.2.jar) needed for offline paperclip startup
 /logs
 /world
 /world_nether

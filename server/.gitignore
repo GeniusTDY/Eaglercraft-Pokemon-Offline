@@ -1,4 +1,4 @@
-/cache
+# 注意: /cache 需入库，内含 paperclip 离线启动所需的 vanilla 缓存 (mojang_1.12.2.jar)
 /logs
 /world
 /world_nether

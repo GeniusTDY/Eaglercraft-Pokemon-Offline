@@ -2,7 +2,7 @@
 
 Universal Eaglercraft server (1.5, 1.8, 1.12) using Paper 1.12.2
 
-Use the `run.bat` file to run on Windows, or `run.sh` to run on macOS or Linux. The server uses port 25565 for both Vanilla and Eaglercraft players.
+Use `run.sh` to run on Linux (x86-64). The server uses port 25565 for both Vanilla and Eaglercraft players.
 
 Based on EaglercraftXServer, EaglercraftXRewind, ViaVersion, SkinsRestorer, and AuthMeReloaded.
 

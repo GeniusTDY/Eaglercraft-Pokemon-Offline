@@ -35,7 +35,7 @@ cd server
 
 服务端默认监听：
 - `25565`：游戏 / Eaglercraft WebSocket 端口
-- `25575`：RCON 端口（密码 `pokeserver`，如不需要可在 `server.properties` 关闭）
+- `25575`：RCON 端口（密码 `pokemon`，如不需要可在 `server.properties` 关闭）
 
 启动成功会出现 `Done (2s)!`，并加载本地证书 `backup.cert`。
 

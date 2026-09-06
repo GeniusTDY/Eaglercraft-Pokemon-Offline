@@ -12,6 +12,7 @@
 
 config-version: 11
 settings:
+  debug: false
   save-user-cache-on-stop-only: false
   sample-count: 12
   bungeecord: false
@@ -34,7 +35,6 @@ settings:
       max: 2048.0
     attackDamage:
       max: 2048.0
-  debug: false
 commands:
   tab-complete: 0
   spam-exclusions:
@@ -63,6 +63,7 @@ stats:
 world-settings:
   default:
     verbose: true
+    mob-spawn-range: 4
     growth:
       cactus-modifier: 100
       cane-modifier: 100
@@ -86,7 +87,6 @@ world-settings:
       monsters: 48
       misc: 32
       other: 64
-    mob-spawn-range: 4
     ticks-per:
       hopper-transfer: 8
       hopper-check: 1
@@ -117,8 +117,8 @@ world-settings:
       item: 2.5
       exp: 3.0
     view-distance: 8
-    enable-zombie-pigmen-portal-spawns: true
     arrow-despawn-rate: 1200
+    enable-zombie-pigmen-portal-spawns: true
     wither-spawn-sound-radius: 0
     hanging-tick-frequency: 100
     zombie-aggressive-towards-villager: true

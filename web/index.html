@@ -12,6 +12,41 @@
 		localStorage.setItem=function(k,v){ return s(k,fix(v)); };
 	}catch(e){}
 })();
+/* 关键：拦截客户端 WebSocket，把指向 localhost/127.0.0.1 的服务器地址改写为当前页面域名(location.host)。
+   这样玩家浏览器连接时经预览网关转发到沙箱内的 8082 代理，再由代理转发到游戏服务器 25565。 */
+(function(){
+	try{
+		var OrigWS = window.WebSocket;
+		if(!OrigWS){ return; }
+		function rewrite(url){
+			try{
+				var host = location.host;
+				if(!host){ return url; }
+				var m = String(url).match(/^(wss?):\/\/([^\/:]+)(:[0-9]+)?(\/.*)?$/);
+				if(m){
+					var h = m[2].toLowerCase();
+					if(h==="localhost"||h==="127.0.0.1"){
+						var scheme = (location.protocol==="https:") ? "wss:" : "ws:";
+						return scheme+"//"+host+(m[4]||"/");
+					}
+				}
+			}catch(e){}
+			return url;
+		}
+		function Wrapped(url, protocols){
+			var n = rewrite(url);
+			return (protocols===undefined) ? new OrigWS(n) : new OrigWS(n, protocols);
+		}
+		Wrapped.prototype = OrigWS.prototype;
+		Object.defineProperty(Wrapped, "name", {value:"WebSocket"});
+		["CONNECTING","OPEN","CLOSING","CLOSED"].forEach(function(k){
+			try{ Wrapped[k]=OrigWS[k]; }catch(e){}
+		});
+		window.WebSocket = Wrapped;
+		var g = (typeof window.$rt_globals!=="undefined") ? window.$rt_globals : null;
+		if(g && g.WebSocket){ g.WebSocket = Wrapped; }
+	}catch(e){}
+})();
 </script>
 <script type="text/javascript">
 "use strict";

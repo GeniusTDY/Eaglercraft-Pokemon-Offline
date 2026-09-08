@@ -12,7 +12,6 @@
 
 config-version: 11
 settings:
-  debug: false
   save-user-cache-on-stop-only: false
   sample-count: 12
   bungeecord: false
@@ -35,6 +34,7 @@ settings:
       max: 2048.0
     attackDamage:
       max: 2048.0
+  debug: false
 commands:
   tab-complete: 0
   spam-exclusions:
@@ -63,6 +63,7 @@ stats:
 world-settings:
   default:
     verbose: true
+    mob-spawn-range: 4
     growth:
       cactus-modifier: 100
       cane-modifier: 100
@@ -90,7 +91,6 @@ world-settings:
       hopper-transfer: 8
       hopper-check: 1
     hopper-amount: 1
-    mob-spawn-range: 4
     random-light-updates: false
     save-structure-info: true
     dragon-death-sound-radius: 0

@@ -581,6 +581,18 @@ window.eaglercraftXOptsHints = {
 
 </head>
 <body style="margin:0px;width:100%;height:100%;overflow:hidden;background-color:#1b1b1b;" id="game_frame">
+<script>
+/* 服务器地址：把默认/已保存的 127.0.0.1 统一映射为 localhost（下同长度，安全替换） */
+(function(){
+	try{
+		var g=localStorage.getItem.bind(localStorage);
+		var s=localStorage.setItem.bind(localStorage);
+		function fix(v){ return (typeof v==="string"&&v.indexOf("127.0.0.1")!==-1)?v.split("127.0.0.1").join("localhost"):v; }
+		localStorage.getItem=function(k){ return g(k)!=null?fix(g(k)):null; };
+		localStorage.setItem=function(k,v){ return s(k,fix(v)); };
+	}catch(e){}
+})();
+</script>
 
 <div id="launch_countdown_screen" style="margin:0px;width:100%;height:100%;overflow:hidden;background-color:#3a2f25;background-image:radial-gradient(#4d3e2e 15%,transparent 16%),radial-gradient(#33291f 15%,transparent 16%),linear-gradient(#3a2f25,#2b221a);background-size:10px 10px,10px 10px,100% 100%;background-position:0 0,5px 5px,0 0;font-family:'Courier New','Minecraft',monospace,'Microsoft YaHei','PingFang SC','Noto Sans CJK SC','Source Han Sans SC',sans-serif;display:flex;align-items:center;user-select:none;">
 <div style="margin:auto;text-align:center;padding:0 16px;width:100%;box-sizing:border-box;">

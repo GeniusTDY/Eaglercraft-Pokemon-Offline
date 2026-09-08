@@ -21,6 +21,10 @@ CONTENT_TYPES = {
     ".jpg": "image/jpeg",
     ".json": "application/json",
     ".ico": "image/x-icon",
+    ".glb": "model/gltf-binary",
+    ".wasm": "application/wasm",
+    ".mjs": "application/javascript",
+    ".webp": "image/webp",
 }
 
 def _recv_head(sock):

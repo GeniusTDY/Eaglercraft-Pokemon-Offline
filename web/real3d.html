@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>宝可梦 官方真实 3D 模型查看器</title>
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; }
+  body { height:100vh; margin:0; overflow:hidden;
+         background: radial-gradient(circle at 50% 32%, #232c52, #080b16 75%);
+         color:#fff; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         display:flex; flex-direction:column; }
+  header { padding:12px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+           background:rgba(255,255,255,.05); border-bottom:1px solid rgba(255,255,255,.09); z-index:3; }
+  header h1 { font-size:16px; margin:0; letter-spacing:.4px; }
+  .picker { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#e4eaff;
+          padding:4px 13px; border-radius:20px; cursor:pointer; font-size:13px; user-select:none;
+          transition:.15s; line-height:1.35; }
+  .chip:hover { background:rgba(255,255,255,.17); }
+  .chip.active { background:#ffcc00; color:#111; border-color:#ffcc00; font-weight:600; }
+  .ctl { margin-left:auto; display:flex; align-items:center; gap:12px; font-size:12px; color:#9fb0d8; }
+  #animBtn { background:rgba(255,255,255,.1); color:#fff; border:1px solid rgba(255,255,255,.25);
+             padding:4px 12px; border-radius:16px; cursor:pointer; font-size:12px; }
+  #animBtn.off { opacity:.55; }
+  canvas { flex:1; width:100%; display:block; touch-action:none; }
+  #status { position:absolute; left:20px; top:64px; font-size:13px; color:#ffd98a; z-index:4;
+            text-shadow:0 1px 4px #000; pointer-events:none; max-width:70%; }
+  footer { text-align:center; padding:5px; font-size:11px; color:#67729e;
+           background:rgba(255,255,255,.03); }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ 宝可梦 · 官方真实 3D 模型</h1>
+  <div class="picker" id="picker"></div>
+  <div class="ctl">
+    <span>拖拽旋转 · 滚轮缩放</span>
+    <button id="animBtn" type="button">动画: 开</button>
+  </div>
+</header>
+<div id="status">加载中…</div>
+<canvas id="gl"></canvas>
+<footer>Pokemon HOME / 剑盾 提取模型（原版风格）· three.js WebGL 渲染 · 本地离线资源</footer>
+
+<script type="importmap">
+{ "imports": { "three": "./three/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './three/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from './three/jsm/loaders/DRACOLoader.js';
+
+const SPECIES = [
+  {name:'pikachu',    label:'皮卡丘'},
+  {name:'charmander', label:'小火龙'},
+  {name:'squirtle',   label:'杰尼龟'},
+  {name:'mewtwo',     label:'超梦'},
+  {name:'rayquaza',   label:'裂空座'},
+  {name:'groudon',    label:'固拉多'},
+  {name:'kyogre',     label:'盖欧卡'},
+  {name:'arceus',     label:'阿尔宙斯'}
+];
+
+const canvas = document.getElementById('gl');
+const statusEl = document.getElementById('status');
+const animBtn = document.getElementById('animBtn');
+let renderer, scene, camera, modelGroup = null, mixer = null, action = null;
+let animOn = true;
+let nx = 0, ny = 0, autoRot = true;
+let drag = false, px = 0, py = 0;
+let modelScale = 1, modelYaw = 0;
+let baseDist = 5;
+
+function status(t){ statusEl.textContent = t; }
+
+// --- 渲染环境 ---
+function initScene(){
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+
+  scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x33406b, 1.15));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(4,6,6);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xdfe6ff, 0.6); fill.position.set(-5,-2,3);
+  scene.add(fill);
+
+  camera = new THREE.PerspectiveCamera(42, 1, 0.1, 800);
+  camera.position.set(0, 1.1, baseDist);
+  camera.lookAt(0,0.8,0);
+  fit();
+}
+
+function fit(){
+  const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+
+// --- 加载模型 ---
+const draco = new DRACOLoader();
+draco.setDecoderPath('./three/jsm/libs/draco/gltf/');
+draco.setDecoderConfig({ type:'wasm' });
+
+const loader = new GLTFLoader();
+loader.setDRACOLoader(draco);
+
+function disposeModel(){
+  if(modelGroup){
+    scene.remove(modelGroup);
+    modelGroup.traverse(o=>{
+      if(o.geometry) o.geometry.dispose();
+      if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+        for(const k in m){ if(m[k] && m[k].isTexture) m[k].dispose(); }
+        m.dispose();
+      });}
+    });
+    modelGroup = null;
+  }
+  if(mixer){ mixer.stopAllAction(); mixer = null; action = null; }
+}
+
+function centerAndScale(root){
+  const box = new THREE.Box3().setFromObject(root);
+  if(box.isEmpty()) return 1;
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  // 平移使模型中心在原点、贴地（底部 y=0）
+  root.position.x -= center.x;
+  root.position.z -= center.z;
+  // 归一归一：不改变模型大小，只调整相机距离避免模型太大/太小
+  baseDist = Math.max(size.x, size.y, size.z);
+  return baseDist;
+}
+
+function loadModel(species){
+  status('加载模型 ' + species.label + ' …');
+  disposeModel();
+
+  const holder = new THREE.Group();
+  loader.load('models_real/' + species.name + '.glb', gltf=>{
+    const root = gltf.scene;
+    holder.add(root);
+
+    // 动画
+    if(gltf.animations && gltf.animations.length){
+      mixer = new THREE.AnimationMixer(root);
+      const idle = gltf.animations.find(a=>/idle|wait|loop/i.test(a.name)) || gltf.animations[0];
+      action = mixer.clipAction(idle);
+      action.play();
+    }
+
+    centerAndScale(holder);
+    modelGroup = holder;
+    scene.add(holder);
+
+    const box = new THREE.Box3().setFromObject(holder);
+    const size = box.getSize(new THREE.Vector3());
+    camera.position.set(size.x*0.9, size.y*0.55, size.z*1.6);
+    camera.near = baseDist/100; camera.far = baseDist*50; camera.updateProjectionMatrix();
+    camera.lookAt(0, size.y*0.42, 0);
+
+    status(species.label + ' 已加载' + (gltf.animations && gltf.animations.length ? '（含动画）':'') );
+    applyAnimState();
+  }, undefined, err=>{
+    console.error(err);
+    status('加载失败: ' + species.label + ' → ' + (err && err.message || err));
+  });
+}
+
+function applyAnimState(){
+  if(!action){ animBtn.textContent='动画: 无'; animBtn.disabled=true; animBtn.classList.add('off'); return; }
+  if(animOn){ action.paused=false; action.enabled=true; action.play(); animBtn.textContent='动画: 开'; }
+  else { if(action) action.paused=true; animBtn.textContent='动画: 关键帧'; }
+  animBtn.classList.toggle('off', !animOn);
+}
+
+// --- 交互 ---
+function setupInput(){
+  canvas.addEventListener('pointerdown', e=>{ drag=true; px=e.clientX; py=e.clientY; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e=>{
+    if(!drag) return;
+    const dx = e.clientX - px, dy = e.clientY - py;
+    px = e.clientX; py = e.clientY;
+    autoRot = false;
+    if(modelGroup){ modelGroup.rotation.y += dx * 0.01; }
+    camera.position.y = Math.max(-2, Math.min(8, camera.position.y + dy * 0.015));
+    camera.lookAt(0,1,0);
+  });
+  canvas.addEventListener('pointerup', ()=> drag=false);
+  canvas.addEventListener('pointercancel', ()=> drag=false);
+  canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const d = e.deltaY * 0.002;
+    camera.position.multiplyScalar(Math.max(0.2, Math.min(3, 1 + d)));
+  }, { passive:false });
+  animBtn.addEventListener('click', ()=>{ animOn = !animOn; applyAnimState(); });
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  if(mixer) mixer.update(0.016);
+  if(autoRot && modelGroup){ modelGroup.rotation.y += 0.003; }
+  renderer.render(scene, camera);
+}
+
+// --- 启动 ---
+function init(){
+  const picker = document.getElementById('picker');
+  SPECIES.forEach(s=>{
+    const c = document.createElement('span');
+    c.className = 'chip'; c.textContent = s.label;
+    c.onclick = ()=>{
+      document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+      c.classList.add('active'); loadModel(s);
+    };
+    picker.appendChild(c);
+  });
+  document.querySelector('.chip').classList.add('active');
+
+  initScene();
+  setupInput();
+  window.addEventListener('resize', fit);
+  animate();
+  loadModel(SPECIES[0]);
+}
+
+try { init(); }
+catch(err){ console.error(err); status('初始化失败: ' + (err.message||err)); }
+</script>
+</body>
+</html>

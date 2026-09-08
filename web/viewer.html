@@ -143,7 +143,7 @@ function initGL(){
   canvas = document.getElementById("gl");
   GL = canvas.getContext("webgl", { antialias:true, alpha:false });
   if(!GL){ GL = canvas.getContext("experimental-webgl"); }
-  if(!GL){ statusEl.textContent="WebGL 不可用"; return; }
+  if(!GL){ statusEl.textContent="当前环境不支持 WebGL，无法显示 3D 模型（请用支持硬件加速的浏览器打开）"; return; }
   var vs = "attribute vec3 aP; attribute vec2 aUV; attribute vec3 aN;"
     + "uniform mat4 uM; uniform mat4 uProj; varying vec2 vUV; varying float vL;"
     + "void main(){ vec4 wp=uM*vec4(aP,1.0); vUV=aUV;"
@@ -210,15 +210,18 @@ function render(){
 }
 
 function buildMeshBuffers(mesh){
+  if(!GL) return mesh;
   var mk=function(data){ var b=GL.createBuffer(); GL.bindBuffer(GL.ARRAY_BUFFER,b);
     GL.bufferData(GL.ARRAY_BUFFER,data,GL.STATIC_DRAW); return b; };
   mesh.vboP=mk(mesh.positions); mesh.vboUV=mk(mesh.uvs); mesh.vboN=mk(mesh.normals);
   return mesh;
 }
-function loadTexture(url, mesh){
+function loadTexture(url){
+  if(!GL){ return Promise.resolve(); }
   return new Promise(function(res){
     var img=new Image();
     img.onload=function(){
+      if(!GL){ res(); return; }
       var tex=GL.createTexture(); GL.bindTexture(GL.TEXTURE_2D,tex);
       GL.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, true);
       GL.texImage2D(GL.TEXTURE_2D,0,GL.RGBA,GL.RGBA,GL.UNSIGNED_BYTE,img);
@@ -245,6 +248,28 @@ function loadSpecies(name){
 }
 
 /* ================= 交互 ================= */
+function setupInput(){
+  var dragging=false, px=0, py=0;
+  canvas.addEventListener("mousedown",function(e){ dragging=true; px=e.clientX; py=e.clientY; cam.auto=false; });
+  window.addEventListener("mouseup",function(){ dragging=false; });
+  window.addEventListener("mousemove",function(e){
+    if(!dragging) return;
+    cam.yaw  += (e.clientX-px)*0.01;
+    cam.pitch+= (e.clientY-py)*0.01;
+    cam.pitch=Math.max(-1.4,Math.min(1.4,cam.pitch));
+    px=e.clientX; py=e.clientY;
+  });
+  canvas.addEventListener("wheel",function(e){ e.preventDefault(); cam.dist=Math.max(1.2,Math.min(8,cam.dist*(e.deltaY>0?1.1:0.9))); }, {passive:false});
+  canvas.addEventListener("touchstart",function(e){ if(e.touches.length===1){ dragging=true; px=e.touches[0].clientX; py=e.touches[0].clientY; cam.auto=false; } }, {passive:true});
+  canvas.addEventListener("touchmove",function(e){ if(!dragging||e.touches.length!==1) return;
+    cam.yaw+=(e.touches[0].clientX-px)*0.01; cam.pitch+=(e.touches[0].clientY-py)*0.01;
+    cam.pitch=Math.max(-1.4,Math.min(1.4,cam.pitch));
+    px=e.touches[0].clientX; py=e.touches[0].clientY;
+  }, {passive:true});
+  canvas.addEventListener("touchend",function(){ dragging=false; }, {passive:true});
+}
+
+/* ================= 选择器 ================= */
 function setupPicker(){
   SPECIES.forEach(function(s){
     var el=document.createElement("div");
@@ -257,19 +282,6 @@ function setupPicker(){
   });
   picker.firstChild.classList.add("active");
 }
-(function(){
-  var dragging=false, px=0, py=0;
-  canvas.addEventListener("mousedown",function(e){ dragging=true; px=e.clientX; py=e.clientY; cam.auto=false; });
-  window.addEventListener("mouseup",function(){ dragging=false; });
-  window.addEventListener("mousemove",function(e){
-    if(!dragging) return;
-    cam.yaw  += (e.clientX-px)*0.01;
-    cam.pitch+= (e.clientY-py)*0.01;
-    cam.pitch=Math.max(-1.4,Math.min(1.4,cam.pitch));
-    px=e.clientX; py=e.clientY;
-  });
-  canvas.addEventListener("wheel",function(e){ e.preventDefault(); cam.dist=Math.max(1.2,Math.min(8,cam.dist*(e.deltaY>0?1.1:0.9))); }, {passive:false});
-})();
 
 /* 主循环 */
 window.addEventListener("resize", function(){ resize(); });
@@ -290,6 +302,7 @@ window.addEventListener("DOMContentLoaded", function(){
   statusEl=document.getElementById("status");
   initGL();
   setupPicker();
+  setupInput();
   resize();
   loadSpecies(SPECIES[0]);
 });

@@ -65,6 +65,7 @@ world-settings:
       disable-extreme-hills-emeralds: false
       disable-extreme-hills-monster-eggs: false
       disable-mesa-additional-gold: false
+    portal-search-radius: 128
     queue-light-updates: false
     optimize-explosions: false
     use-chunk-inhabited-timer: true
@@ -104,7 +105,6 @@ world-settings:
     lava-flow-speed:
       normal: 30
       nether: 10
-    portal-search-radius: 128
     lootables:
       auto-replenish: false
       restrict-player-reloot: true
@@ -123,6 +123,7 @@ world-settings:
     duplicate-uuid-saferegen-delete-range: 32
     keep-spawn-loaded-range: 8
     auto-save-interval: -1
+    parrots-are-unaffected-by-player-movement: false
     nether-ceiling-void-damage: false
     allow-non-player-entities-on-scoreboards: false
     frosted-ice:
@@ -131,7 +132,6 @@ world-settings:
         min: 20
         max: 40
     container-update-tick-rate: 1
-    parrots-are-unaffected-by-player-movement: false
     disable-explosion-knockback: false
     elytra-hit-wall-damage: true
     grass-spread-tick-rate: 1
@@ -139,9 +139,6 @@ world-settings:
     bed-search-radius: 1
     prevent-tnt-from-moving-in-water: false
     non-player-arrow-despawn-rate: -1
-    disable-teleportation-suffocation-check: false
-    enable-treasure-maps: true
-    treasure-maps-return-already-discovered: false
     armor-stands-tick: true
     keep-spawn-loaded: true
     anti-xray:
@@ -174,10 +171,13 @@ world-settings:
     skeleton-horse-thunder-spawn-chance: 0.01
     disable-ice-and-snow: false
     fire-physics-event-for-redstone: false
-    spawner-nerfed-mobs-should-jump: false
     baby-zombie-movement-speed: 0.5
+    spawner-nerfed-mobs-should-jump: false
     allow-leashing-undead-horse: false
     mob-spawner-tick-rate: 1
     all-chunks-are-slime-chunks: false
     squid-spawn-height:
       maximum: 0.0
+    disable-teleportation-suffocation-check: false
+    enable-treasure-maps: true
+    treasure-maps-return-already-discovered: false

@@ -21,10 +21,10 @@ protocol_v4_defrag_max_packets: 64
 brand_lookup_ratelimit: 240
 webview_download_ratelimit: 8
 webview_message_ratelimit: 120
-debug_log_new_channels: false
-debug_log_real_ip_headers: false
-debug_log_origin_headers: false
-debug_log_client_brands: false
+debug_log_new_channels: true
+debug_log_real_ip_headers: true
+debug_log_origin_headers: true
+debug_log_client_brands: true
 protocols:
   min_minecraft_protocol: 3
   max_minecraft_protocol: 340

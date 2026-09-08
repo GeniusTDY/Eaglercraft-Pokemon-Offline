@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>宝可梦 3D 模型查看器</title>
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; }
+  body { height:100vh; background:radial-gradient(circle at 50% 28%, #1a2340, #070910 72%); color:#fff;
+         font-family:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display:flex; flex-direction:column;
+         overflow:hidden; }
+  header { padding:12px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+           background:rgba(255,255,255,.04); border-bottom:1px solid rgba(255,255,255,.08); z-index:2; }
+  header h1 { font-size:17px; margin:0; letter-spacing:.5px; }
+  .picker { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16); color:#dfe6ff;
+          padding:4px 13px; border-radius:20px; cursor:pointer; font-size:13px; user-select:none;
+          transition:.15s; line-height:1.3; }
+  .chip:hover { background:rgba(255,255,255,.16); }
+  .chip.active { background:#ffcc00; color:#111; border-color:#ffcc00; font-weight:600; }
+  .hint { margin-left:auto; font-size:12px; color:#8ca0d0; }
+  canvas { flex:1; width:100%; display:block; touch-action:none; }
+  footer { text-align:center; padding:5px; font-size:11px; color:#66729c; background:rgba(255,255,255,.02); }
+  #status { position:absolute; left:20px; top:64px; font-size:13px; color:#ffcc88; z-index:3;
+            text-shadow:0 1px 3px #000; pointer-events:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ 宝可梦 3D 查看器</h1>
+  <div class="picker" id="picker"></div>
+  <div class="hint">拖拽旋转 · 滚轮缩放 · 自动旋转</div>
+</header>
+<div id="status">加载中…</div>
+<canvas id="gl"></canvas>
+<footer>Cobblemon 官方模组模型 · 浏览器端 WebGL 渲染 · LocalStorage 徽章 once</footer>
+
+<script>
+"use strict";
+var SPECIES = ["pikachu","charmander","squirtle","mewtwo","rayquaza","groudon","kyogre","arceus"];
+var NAMES = { pikachu:"皮卡丘", charmander:"小火龙", squirtle:"杰尼龟", mewtwo:"超梦",
+              rayquaza:"裂空座", groudon:"固拉多", kyogre:"盖欧卡", arceus:"阿尔宙斯" };
+
+/* ================= 数学 (column-major 4x4) ================= */
+function mId(){ return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; }
+function mMul(a,b){ var r=new Array(16);
+  for(var j=0;j<4;j++)for(var i=0;i<4;i++)
+    r[j*4+i]=a[0*4+i]*b[j*4+0]+a[1*4+i]*b[j*4+1]+a[2*4+i]*b[j*4+2]+a[3*4+i]*b[j*4+3];
+  return r; }
+function mTrans(x,y,z){ var m=mId(); m[12]=x; m[13]=y; m[14]=z; return m; }
+function mRotX(a){ var c=Math.cos(a),s=Math.sin(a),m=mId(); m[5]=c;m[6]=-s;m[9]=s;m[10]=c; return m; }
+function mRotY(a){ var c=Math.cos(a),s=Math.sin(a),m=mId(); m[0]=c;m[2]=s;m[8]=-s;m[10]=c; return m; }
+function mRotZ(a){ var c=Math.cos(a),s=Math.sin(a),m=mId(); m[0]=c;m[1]=-s;m[4]=s;m[5]=c; return m; }
+function mApply(m,x,y,z){
+  return [m[0]*x+m[4]*y+m[8]*z+m[12],
+          m[1]*x+m[5]*y+m[9]*z+m[13],
+          m[2]*x+m[6]*y+m[10]*z+m[14]]; }
+
+/* ================= 解析 bedrock geo.json → 三角网格 ================= */
+function parseMesh(g){
+  var geo = g["minecraft:geometry"];
+  if(Array.isArray(geo)) geo = geo[0];
+  var desc = geo.description || {};
+  var texW = desc.texture_width || 64, texH = desc.texture_height || 64;
+  var bones = geo.bones || [];
+  var by = {}; bones.forEach(function(b){ by[b.name]=b; });
+
+  var cache = {};
+  function boneMat(name){
+    if(cache[name]) return cache[name];
+    var b = by[name]; if(!b){ var m=mId(); cache[name]=m; return m; }
+    var p = b.pivot || [0,0,0], r = b.rotation || [0,0,0];
+    var rot = mMul(mRotZ(r[2]*Math.PI/180), mMul(mRotY(r[1]*Math.PI/180), mRotX(r[0]*Math.PI/180)));
+    var local = mMul(mTrans(p[0],p[1],p[2]), mMul(rot, mTrans(-p[0],-p[1],-p[2])));
+    local = b.parent && by[b.parent] ? mMul(boneMat(b.parent), local) : local;
+    cache[name]=local; return local;
+  }
+
+  var positions=[], uvs=[], normals=[];
+  bones.forEach(function(b){
+    var M = boneMat(b.name);
+    (b.cubes||[]).forEach(function(c){ addCube(c, M); });
+  });
+
+  function addCube(cube, M){
+    var ori = cube.origin, size = cube.size, inf = cube.inflate||0, uvo = cube.uv||[0,0];
+    var ox=ori[0]-inf, oy=ori[1]-inf, oz=ori[2]-inf;
+    var sx=size[0]+2*inf, sy=size[1]+2*inf, sz=size[2]+2*inf;
+    var U=uvo[0], V=uvo[1];
+    // 8 顶点 (B 面用 origin 原点)
+    var c=[
+      [ox,oy,oz],[ox+sx,oy,oz],[ox+sx,oy,oz+sz],[ox,oy,oz+sz],
+      [ox,oy+sy,oz],[ox+sx,oy+sy,oz],[ox+sx,oy+sy,oz+sz],[ox,oy+sy,oz+sz]
+    ];
+    // Bedrock box UV: 各面 UV 矩形(像素)，v 向下为纹理读取；纹理坐标需 v 翻转
+    // 面: [角点, 法线, u0,u1,v0,v1]
+    var faces=[
+      { idx:[0,1,5,4], n:[0,0,-1], u0:U+sz+sx+sz, v0:V+sz, u1:U+sz+sx+sz+sx, v1:V+sz+sy }, // north
+      { idx:[4,5,6,7], n:[0,1,0],  u0:U+sz,        v0:V+0, u1:U+sz+sx,       v1:V+sz },    // up
+      { idx:[3,7,6,2], n:[0,0,1],  u0:U+sz,        v0:V+sz, u1:U+sz+sx,      v1:V+sz+sy }, // south
+      { idx:[1,2,6,5], n:[1,0,0],  u0:U+sz+sx,     v0:V+sz, u1:U+sz+sx+sz,   v1:V+sz+sy }, // east
+      { idx:[2,3,7,6], n:[0,-1,0], u0:U+sx,        v0:V,   u1:U+sx+sz,       v1:V+sz },    // down
+      { idx:[3,0,4,7], n:[-1,0,0], u0:U,           v0:V+sz, u1:U+sz,          v1:V+sz+sy }, // west
+    ];
+    faces.forEach(function(f){
+      var a=c[f.idx[0]], b=c[f.idx[1]], d=c[f.idx[2]], e=c[f.idx[3]];
+      emitTri(f, a,b,d, M);
+      emitTri(f, a,d,e, M);
+    });
+  }
+  function emitTri(f, p0,p1,p2, M){
+    var w0=mApply(M,p0[0],p0[1],p0[2]);
+    var w1=mApply(M,p1[0],p1[1],p1[2]);
+    var w2=mApply(M,p2[0],p2[1],p2[2]);
+    positions.push(w0[0],w0[1],w0[2], w1[0],w1[1],w1[2], w2[0],w2[1],w2[2]);
+    var x0=f.u0/texW, x1=f.u1/texW, y0=f.v0/texH, y1=f.v1/texH;
+    // v 翻转: 纹理 v=0 在顶部
+    uvs.push(x0,1-y0, x1,1-y0, x1,1-y1);      // tri A
+    uvs.push(x0,1-y0, x1,1-y1, x0,1-y1);      // tri B
+    for(var i=0;i<6;i++){ normals.push(f.n[0],f.n[1],f.n[2]); }
+  }
+  // 计算包围盒（单位为 bedrock 像素，1/16=方块）
+  var mn=[1e9,1e9,1e9], mx=[-1e9,-1e9,-1e9];
+  for(var i=0;i<positions.length;i+=3){
+    mn[0]=Math.min(mn[0],positions[i]);   mx[0]=Math.max(mx[0],positions[i]);
+    mn[1]=Math.min(mn[1],positions[i+1]); mx[1]=Math.max(mx[1],positions[i+1]);
+    mn[2]=Math.min(mn[2],positions[i+2]); mx[2]=Math.max(mx[2],positions[i+2]);
+  }
+  var center=[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2];
+  var span=Math.max(mx[0]-mn[0], mx[1]-mn[1], mx[2]-mn[2]);  // 像素单位
+  return { positions:new Float32Array(positions), uvs:new Float32Array(uvs),
+           normals:new Float32Array(normals), count:positions.length/3,
+           texW:texW, texH:texH, center:center, span:span };
+}
+
+/* ================= WebGL 渲染器 ================= */
+var GL, prog, canvas, picker, statusEl;
+var curMesh=null, curTex=null;
+var cam={ yaw:0.6, pitch:-0.32, dist:3.2, auto:true };
+
+function initGL(){
+  canvas = document.getElementById("gl");
+  GL = canvas.getContext("webgl", { antialias:true, alpha:false });
+  if(!GL){ GL = canvas.getContext("experimental-webgl"); }
+  if(!GL){ statusEl.textContent="WebGL 不可用"; return; }
+  var vs = "attribute vec3 aP; attribute vec2 aUV; attribute vec3 aN;"
+    + "uniform mat4 uM; uniform mat4 uProj; varying vec2 vUV; varying float vL;"
+    + "void main(){ vec4 wp=uM*vec4(aP,1.0); vUV=aUV;"
+    + " vec3 n=normalize(mat3(uM)*aN); float d=dot(n, normalize(vec3(0.5,0.9,0.6)));"
+    + " vL=0.30+0.70*max(d,0.0); gl_Position=uProj*wp; }";
+  var fs = "precision mediump float; varying vec2 vUV; varying float vL; uniform sampler2D uTex;"
+    + "void main(){ vec4 c=texture2D(uTex, vUV); if(c.a<0.5) discard; gl_FragColor=vec4(c.rgb*vL, 1.0); }";
+  prog = prog || mkProg(vs, fs);
+  GL.useProgram(prog);
+}
+function mkProg(vs,fs){
+  function sh(t,s){ var o=GL.createShader(t); GL.shaderSource(o,s); GL.compileShader(o); return o; }
+  var p=GL.createProgram();
+  GL.attachShader(p, sh(GL.VERTEX_SHADER, vs)); GL.attachShader(p, sh(GL.FRAGMENT_SHADER, fs));
+  GL.linkProgram(p);
+  p.aP=GL.getAttribLocation(p,"aP"); p.aUV=GL.getAttribLocation(p,"aUV");
+  p.aN=GL.getAttribLocation(p,"aN");
+  p.uM=GL.getUniformLocation(p,"uM"); p.uProj=GL.getUniformLocation(p,"uProj");
+  p.uTex=GL.getUniformLocation(p,"uTex");
+  return p;
+}
+
+function perspective(fovy, aspect, near, far){
+  var f=1.0/Math.tan(fovy/2), nf=1/(near-far), m=mId();
+  m[0]=f/aspect; m[5]=f; m[10]=(far+near)*nf; m[11]=-1; m[14]=2*far*near*nf; return m;
+}
+function lookRot(yaw,pitch){
+  // 相机旋转：把模型绕 Y 再绕 X 转到正对相机
+  return mMul(mRotX(pitch), mRotY(yaw));
+}
+function mScale(s){
+  return [s,0,0,0, 0,s,0,0, 0,0,s,0, 0,0,0,1];
+}
+
+function render(){
+  if(!GL) return;
+  GL.viewport(0,0,GL.drawingBufferWidth,GL.drawingBufferHeight);
+  GL.clearColor(0.03,0.05,0.10,1); GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+  GL.enable(GL.DEPTH_TEST); GL.disable(GL.CULL_FACE);
+  var asp = GL.drawingBufferWidth/Math.max(1,GL.drawingBufferHeight);
+  var proj = perspective(50*Math.PI/180, asp, 0.05, 100);
+  GL.useProgram(prog);
+  GL.uniformMatrix4fv(prog.uProj, false, proj);
+  GL.activeTexture(GL.TEXTURE0); GL.bindTexture(GL.TEXTURE_2D, curTex);
+  GL.uniform1i(prog.uTex, 0);
+  if(curMesh){
+    // 模型变换: 平移到质心 → 缩放适配视口 → 相机旋转 → 摄像机距离前推
+    var c = curMesh.center;
+    var fit = Math.max(0.01, curMesh.span || 1);
+    var viewScale = 3.0/fit; // 让模型宽约 3 个单位进入视口
+    var model = mMul( mTrans(0,0,-cam.dist),
+              mMul( lookRot(cam.yaw, cam.pitch),
+              mMul( mScale(viewScale),
+              mTrans(-c[0], -c[1], -c[2]) ) ) );
+    GL.uniformMatrix4fv(prog.uM, false, model);
+    GL.bindBuffer(GL.ARRAY_BUFFER, curMesh.vboP); GL.enableVertexAttribArray(prog.aP);
+    GL.vertexAttribPointer(prog.aP,3,GL.FLOAT,false,0,0);
+    GL.bindBuffer(GL.ARRAY_BUFFER, curMesh.vboUV); GL.enableVertexAttribArray(prog.aUV);
+    GL.vertexAttribPointer(prog.aUV,2,GL.FLOAT,false,0,0);
+    GL.bindBuffer(GL.ARRAY_BUFFER, curMesh.vboN); GL.enableVertexAttribArray(prog.aN);
+    GL.vertexAttribPointer(prog.aN,3,GL.FLOAT,false,0,0);
+    GL.drawArrays(GL.TRIANGLES, 0, curMesh.count);
+  }
+}
+
+function buildMeshBuffers(mesh){
+  var mk=function(data){ var b=GL.createBuffer(); GL.bindBuffer(GL.ARRAY_BUFFER,b);
+    GL.bufferData(GL.ARRAY_BUFFER,data,GL.STATIC_DRAW); return b; };
+  mesh.vboP=mk(mesh.positions); mesh.vboUV=mk(mesh.uvs); mesh.vboN=mk(mesh.normals);
+  return mesh;
+}
+function loadTexture(url, mesh){
+  return new Promise(function(res){
+    var img=new Image();
+    img.onload=function(){
+      var tex=GL.createTexture(); GL.bindTexture(GL.TEXTURE_2D,tex);
+      GL.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, true);
+      GL.texImage2D(GL.TEXTURE_2D,0,GL.RGBA,GL.RGBA,GL.UNSIGNED_BYTE,img);
+      GL.texParameteri(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.LINEAR_MIPMAP_LINEAR);
+      GL.texParameteri(GL.TEXTURE_2D,GL.TEXTURE_MAG_FILTER,GL.NEAREST);
+      GL.generateMipmap(GL.TEXTURE_2D);
+      GL.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, false);
+      curTex=tex; res();
+    };
+    img.onerror=function(){ curTex=null; res(); };
+    img.src=url;
+  });
+}
+
+function loadSpecies(name){
+  statusEl.textContent = "加载 " + (NAMES[name]||name) + "…";
+  Promise.all([
+    fetch("models/"+name+".geo.json").then(function(r){ return r.json(); }).then(function(g){
+      curMesh = buildMeshBuffers(parseMesh(g));
+    }),
+    loadTexture("models/"+name+".png")
+  ]).then(function(){ statusEl.textContent=""; })
+    .catch(function(e){ statusEl.textContent="加载失败: "+e; });
+}
+
+/* ================= 交互 ================= */
+function setupPicker(){
+  SPECIES.forEach(function(s){
+    var el=document.createElement("div");
+    el.className="chip"; el.textContent=NAMES[s]||s;
+    el.onclick=function(){
+      document.querySelectorAll(".chip").forEach(function(c){ c.classList.remove("active"); });
+      el.classList.add("active"); loadSpecies(s);
+    };
+    picker.appendChild(el);
+  });
+  picker.firstChild.classList.add("active");
+}
+(function(){
+  var dragging=false, px=0, py=0;
+  canvas.addEventListener("mousedown",function(e){ dragging=true; px=e.clientX; py=e.clientY; cam.auto=false; });
+  window.addEventListener("mouseup",function(){ dragging=false; });
+  window.addEventListener("mousemove",function(e){
+    if(!dragging) return;
+    cam.yaw  += (e.clientX-px)*0.01;
+    cam.pitch+= (e.clientY-py)*0.01;
+    cam.pitch=Math.max(-1.4,Math.min(1.4,cam.pitch));
+    px=e.clientX; py=e.clientY;
+  });
+  canvas.addEventListener("wheel",function(e){ e.preventDefault(); cam.dist=Math.max(1.2,Math.min(8,cam.dist*(e.deltaY>0?1.1:0.9))); }, {passive:false});
+})();
+
+/* 主循环 */
+window.addEventListener("resize", function(){ resize(); });
+function resize(){
+  var dpr=Math.min(2, window.devicePixelRatio||1);
+  var w=canvas.clientWidth, h=canvas.clientHeight;
+  canvas.width=w*dpr; canvas.height=h*dpr;
+}
+(function loop(){
+  if(cam.auto) cam.yaw+=0.004;
+  if(curMesh) render();
+  requestAnimationFrame(loop);
+})();
+
+/* 启动 */
+window.addEventListener("DOMContentLoaded", function(){
+  picker=document.getElementById("picker");
+  statusEl=document.getElementById("status");
+  initGL();
+  setupPicker();
+  resize();
+  loadSpecies(SPECIES[0]);
+});
+</script>
+</body>
+</html>

@@ -12,6 +12,33 @@
 """
 import os, sys, json, struct, math
 
+# 实验开关：翻转 X 轴旋转符号
+FLIPX_BONE = os.environ.get("FLIPX_BONE") == "1"
+FLIPX_CUBE = os.environ.get("FLIPX_CUBE") == "1"
+# 只翻转尾巴子树骨骼的 X 旋转（祖先链包含 tail 的骨骼）
+TAILX = os.environ.get("TAILX") == "1"
+
+
+def in_tail_subtree(name, by):
+    """name 的祖先链是否包含名为 tail 的骨骼。"""
+    seen = set()
+    while name in by and name not in seen:
+        seen.add(name)
+        if name == "tail":
+            return True
+        name = by[name].get("parent", "")
+    return False
+
+
+def flip_x_bone(name, b, by):
+    if TAILX and in_tail_subtree(name, by):
+        rng = b.get("rotation", [0, 0, 0])
+        return [-rng[0], rng[1], rng[2]]
+    if FLIPX_BONE:
+        rng = b.get("rotation", [0, 0, 0])
+        return [-rng[0], rng[1], rng[2]]
+    return b.get("rotation", [0, 0, 0])
+
 # ================= glTF/GLB 二进制写入器 =================
 class GlbWriter:
     def __init__(self):
@@ -331,9 +358,9 @@ def build_cube_geometry(cube, texW, texH):
         [ox, oy + sy, oz], [ox + sx, oy + sy, oz], [ox + sx, oy + sy, oz + sz], [ox, oy + sy, oz + sz],
     ]
     # cube 自身 rotation（绕其 pivot）—— 与骨骼旋转同顺序
-    # Minecraft 模型空间 X 轴取反：cube 的 X 旋转符号也取反（e3 转换策略）
     cr = cube.get("rotation", [0, 0, 0])
-    cr = [-cr[0], cr[1], cr[2]]
+    if FLIPX_CUBE:
+        cr = [-cr[0], cr[1], cr[2]]
     if any(cr):
         piv = cube.get("pivot", [0, 0, 0])
         c = [
@@ -430,13 +457,11 @@ def convert(species, geo_path, png_path, anim_paths, out_path, fps=24):
         w.nodes[node_of[name]]["children"].append(len(w.nodes) - 1)
 
     # 设置骨骼节点 rest TRS 与层级
-    # Minecraft 模型空间 X 轴取反：骨骼 X 旋转符号取反（e3 转换策略）
     for name, b in by.items():
         ni = node_of[name]
         pivot = b.get("pivot", [0, 0, 0])
-        rng = b.get("rotation", [0, 0, 0])
+        rng = flip_x_bone(name, b, by)
         rx, ry, rz = rng
-        rx = -rx
         q = quat_from_euler(rx, ry, rz)
         rp = rot_apply_pt(rx, ry, rz, pivot)
         t = [pivot[0] - rp[0], pivot[1] - rp[1], pivot[2] - rp[2]]
@@ -474,9 +499,8 @@ def convert(species, geo_path, png_path, anim_paths, out_path, fps=24):
                 pos_chan = bones_anim[bn].get("position")
                 has_rot = rot_chan is not None
                 has_pos = pos_chan is not None
-                # rest base（X 旋转同样翻转，与 rest pose 一致）
-                rest_r_raw = b.get("rotation", [0, 0, 0])
-                rest_r = [-rest_r_raw[0], rest_r_raw[1], rest_r_raw[2]]
+                # rest base
+                rest_r = b.get("rotation", [0, 0, 0])
                 rest_q = quat_from_euler(*rest_r)
                 rest_rp = rot_apply_pt(*rest_r, pivot)
                 rest_t = [pivot[0] - rest_rp[0], pivot[1] - rest_rp[1], pivot[2] - rest_rp[2]]
@@ -485,8 +509,7 @@ def convert(species, geo_path, png_path, anim_paths, out_path, fps=24):
                 t_out = []
                 for t in times:
                     if has_rot:
-                        rr_raw = chan_value(rot_chan, t)
-                        rr = [-rr_raw[0], rr_raw[1], rr_raw[2]]
+                        rr = chan_value(rot_chan, t)
                     else:
                         rr = rest_r
                     R = rot_apply_pt(rr[0], rr[1], rr[2], pivot)

@@ -1,0 +1,54 @@
+
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<script type="importmap">{ "imports": { "three": "./three/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './three/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from './three/jsm/loaders/DRACOLoader.js';
+const species = new URLSearchParams(location.search).get('s');
+const canvas = document.getElementById('c');
+const statusEl = document.getElementById('st');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(1); renderer.setSize(800, 640, false);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a2030);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x33406b, 1.15));
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(4,6,6); scene.add(key);
+const fill = new THREE.DirectionalLight(0xdfe6ff, 0.6); fill.position.set(-5,-2,3); scene.add(fill);
+const camera = new THREE.PerspectiveCamera(42, 800/640, 0.1, 4000);
+const holder = new THREE.Group(); scene.add(holder);
+const draco = new DRACOLoader(); draco.setDecoderPath('./three/jsm/libs/draco/gltf/');
+const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
+loader.load('models_real/' + species + '.glb', gltf => {
+  const root = gltf.scene; holder.add(root);
+  const box = new THREE.Box3().setFromObject(holder);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  root.position.x -= center.x; root.position.z -= center.z;
+  const d = Math.max(size.x, size.y, size.z);
+  camera.position.set(size.x*0.9+1, size.y*0.55+2, size.z*1.6+1);
+  camera.near = d/200; camera.far = d*80; camera.updateProjectionMatrix();
+  camera.lookAt(0, size.y*0.42, 0);
+  let mixer = null, action = null;
+  if(gltf.animations && gltf.animations.length){
+    mixer = new THREE.AnimationMixer(root);
+    const idle = gltf.animations.find(a=>/idle/i.test(a.name)) || gltf.animations[0];
+    action = mixer.clipAction(idle); action.play();
+    statusEl.textContent = 'ANIMS:' + gltf.animations.length + ' playing:' + idle.name.split('.').pop();
+  } else statusEl.textContent = 'ANIMS:0';
+  let t = 0;
+  const tick = () => {
+    requestAnimationFrame(tick);
+    t += 1/60;
+    if(mixer) mixer.update(1/60);
+    holder.rotation.y = t * 0.4;
+    renderer.render(scene, camera);
+  };
+  tick();
+  window.__ready = true;
+  console.log('LOADED:' + species + ' ' + statusEl.textContent);
+}, undefined, e => { statusEl.textContent = 'ERR:' + e.message; console.error(e); });
+</script>
+<style>body{margin:0;background:#1a2030}canvas{display:block}#st{position:fixed;top:6px;left:8px;color:#ffd98a;font:12px monospace;background:rgba(0,0,0,.5);padding:3px 8px;z-index:9}</style>
+</head><body><div id="st">loading</div><canvas id="c" width="800" height="640"></canvas></body></html>

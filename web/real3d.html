@@ -78,6 +78,13 @@ function status(t){ statusEl.textContent = t; }
 
 // --- 渲染环境 ---
 function initScene(){
+  // WebGL 支持检测（无 GPU 环境优雅降级）
+  const testCanvas = document.createElement('canvas');
+  const testGL = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
+  if(!testGL){
+    status('当前环境不支持 WebGL，无法渲染 3D（请用支持 WebGL 的浏览器打开）');
+    return false;
+  }
   renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -96,6 +103,7 @@ function initScene(){
   camera.position.set(0, 1.1, baseDist);
   camera.lookAt(0,0.8,0);
   fit();
+  return true;
 }
 
 function fit(){
@@ -225,7 +233,7 @@ function init(){
   });
   document.querySelector('.chip').classList.add('active');
 
-  initScene();
+  if(!initScene()) return;
   setupInput();
   window.addEventListener('resize', fit);
   animate();
